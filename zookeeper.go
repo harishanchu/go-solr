@@ -22,6 +22,7 @@ type stateChanged func([]byte, error)
 type Zookeeper interface {
 	IsConnected() bool
 	Connect() error
+	Close()
 	GetConnectionString() string
 	Get(path string) ([]byte, int, error)
 	Poll(path string, cb stateChanged)
@@ -51,6 +52,9 @@ func (z *zookeeper) Connect() error {
 	}
 	z.zkConnection = zkConnection
 	return nil
+}
+func (z *zookeeper) Close() {
+	z.zkConnection.Close()
 }
 func (z *zookeeper) ZKLogger(l Logger) {
 	if z.zkConnection != nil {
@@ -111,12 +115,12 @@ func (z *zookeeper) GetClusterState() (map[string]Collection, int, error) {
 }
 
 func (z *zookeeper) GetLeaderElectW() (<-chan zk.Event, error) {
-	_, _, events, err := z.zkConnection.GetW(fmt.Sprintf("/%s/collections/%s/leader_elect", z.zkRoot, z.collection))
+	_, _, events, err := z.zkConnection.GetW(fmt.Sprintf("%s/collections/%s/leader_elect", z.zkRoot, z.collection))
 	return events, err
 }
 
 func (z *zookeeper) GetClusterProps() (ClusterProps, error) {
-	node, _, err := z.zkConnection.Get(fmt.Sprintf("/%s/clusterprops.json", z.zkRoot))
+	node, _, err := z.zkConnection.Get(fmt.Sprintf("%s/clusterprops.json", z.zkRoot))
 	if err != nil {
 		if err == zk.ErrNoNode {
 			return ClusterProps{UrlScheme: "http"}, nil
@@ -150,7 +154,7 @@ func (z *zookeeper) GetLiveNodes() ([]string, error) {
 }
 
 func (z *zookeeper) getLiveNodesPath(root string) string {
-	return fmt.Sprintf("/%s/live_nodes", root)
+	return fmt.Sprintf("%s/live_nodes", root)
 }
 
 func deserializeClusterState(node []byte) (map[string]Collection, error) {
@@ -172,5 +176,5 @@ func deserializeClusterProps(node []byte) (ClusterProps, error) {
 }
 
 func (z *zookeeper) getClusterStatePath(root string, collection string) string {
-	return fmt.Sprintf("/%s/collections/%s/state.json", root, collection)
+	return fmt.Sprintf("%s/collections/%s/state.json", root, collection)
 }
